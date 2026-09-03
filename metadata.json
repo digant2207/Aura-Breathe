@@ -1,0 +1,6 @@
+{
+  "name": "Aura Breathe",
+  "description": "Mindful breathing pacer, restorative ambient soundscapes, and personal wellness progress tracker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
