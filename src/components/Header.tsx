@@ -1,6 +1,6 @@
 import React from 'react';
-import { ASSETS } from '../data/mockData';
 import { TabType } from '../types';
+import { ZenLogo } from './ZenLogo';
 
 interface HeaderProps {
   activeTab: TabType;
@@ -26,17 +26,13 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onNavigate }) => {
   return (
     <header className="fixed top-0 inset-x-0 z-50 bg-[#0f1524]/75 backdrop-blur-2xl pt-safe shadow-[0_4px_20px_rgba(0,0,0,0.35)] border-b border-[#7dd3fc]/10">
       <div className="max-w-md mx-auto h-16 px-4 flex items-center justify-between">
-        {/* Left: Brand Logo & Wordmark */}
+        {/* Left: Brand Logo & Wordmark matching the 2nd uploaded icon image */}
         <button
           onClick={() => onNavigate('daily-zen')}
-          className="flex items-center gap-2.5 hover:opacity-90 transition-opacity focus:outline-none"
+          className="flex items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none group"
           title="Go to Daily Zen"
         >
-          <img
-            src={ASSETS.logo}
-            alt="Aura Breathe Logo"
-            className="h-8 w-auto object-contain drop-shadow-[0_0_8px_rgba(125,211,252,0.3)]"
-          />
+          <ZenLogo size={36} showText={true} />
           <span className="text-xs font-semibold tracking-widest text-primary uppercase drop-shadow-[0_0_10px_rgba(125,211,252,0.4)]">
             AURA
           </span>
