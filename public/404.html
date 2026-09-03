@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Aura Breathe</title>
+    <script>
+      // Single-page-app redirect on GitHub Pages
+      // Redirects 404 subpath queries back to the base index.html
+      var segmentCount = 1;
+      var loc = window.location;
+      loc.replace(
+        loc.protocol + '//' + loc.hostname + (loc.port ? ':' + loc.port : '') +
+        loc.pathname.split('/').slice(0, 1 + segmentCount).join('/') + '/?/' +
+        loc.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
+        (loc.search ? '&' + loc.search.slice(1).replace(/&/g, '~and~') : '') +
+        loc.hash
+      );
+    </script>
+  </head>
+  <body style="background-color: #0a0e1a; color: #7dd3fc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: system-ui, sans-serif;">
+    <p>Loading Aura Breathe...</p>
+  </body>
+</html>

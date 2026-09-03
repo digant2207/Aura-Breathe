@@ -100,8 +100,27 @@ A modern, glassmorphic mindfulness and conscious breathing web application desig
 
 - `npm run dev`: Starts the Vite development server.
 - `npm run build`: Bundles the application for production.
+- `npm run deploy`: Builds and deploys directly to GitHub Pages via the `gh-pages` branch.
 - `npm run preview`: Locally previews the production build.
 - `npm run lint`: Runs TypeScript type checking (`tsc --noEmit`).
+
+---
+
+## 🚀 GitHub Pages Deployment
+
+To deploy Aura Breathe to GitHub Pages with zero issues:
+
+### Method 1: Automated via GitHub Actions (Recommended)
+1. In your GitHub repository, go to **Settings** > **Pages**.
+2. Under **Build and deployment** > **Source**, select **GitHub Actions**.
+3. Push your repository (which includes `.github/workflows/deploy.yml`).
+4. GitHub Actions will automatically install, build, and deploy your app.
+
+### Method 2: One-Command Deploy (`gh-pages`)
+1. Run `npm run deploy`.
+2. In your GitHub repository, go to **Settings** > **Pages**.
+3. Under **Source**, select **Deploy from a branch**.
+4. Choose the `gh-pages` branch and `/ (root)` folder, then save.
 
 ---
 
