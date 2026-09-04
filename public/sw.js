@@ -1,8 +1,10 @@
-const CACHE_NAME = 'aura-breathe-v2';
+const CACHE_NAME = 'aura-breathe-v3';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './apple-touch-icon.png',
+  './icon-512.png',
   './zen-icon.svg',
   './404.html'
 ];
