@@ -39,6 +39,10 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
   const [currentRound, setCurrentRound] = useState<number>(1);
   const completedSecondsRef = useRef<number>(0);
 
+  // Screen Wake Lock API state to prevent iPhone screen timeout
+  const [wakeLockActive, setWakeLockActive] = useState<boolean>(false);
+  const wakeLockRef = useRef<any>(null);
+
   // High precision animation timestamp refs
   const phaseStartTimeRef = useRef<number>(performance.now());
   const pausedAtRef = useRef<number | null>(null);
@@ -97,6 +101,55 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
   useEffect(() => {
     isCompletedRef.current = isCompleted;
   }, [isCompleted]);
+
+  // Screen Wake Lock API: Keeps iPhone screen alive and prevents timeout/sleep during breathing
+  useEffect(() => {
+    let isMounted = true;
+
+    const acquireLock = async () => {
+      if (isPaused || isCompleted) return;
+
+      try {
+        if ('wakeLock' in navigator) {
+          const lock = await (navigator as any).wakeLock.request('screen');
+          if (isMounted) {
+            wakeLockRef.current = lock;
+            setWakeLockActive(true);
+            lock.addEventListener('release', () => {
+              if (isMounted) setWakeLockActive(false);
+            });
+          } else {
+            lock.release();
+          }
+        }
+      } catch (err) {
+        // Wake lock can fail if system battery saver is on or user switches tabs
+        console.warn('Screen WakeLock unavailable:', err);
+      }
+    };
+
+    acquireLock();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isPaused && !isCompleted) {
+        acquireLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        try {
+          wakeLockRef.current.release();
+        } catch (_) {}
+        wakeLockRef.current = null;
+      }
+      setWakeLockActive(false);
+    };
+  }, [isPaused, isCompleted]);
 
   // Overall session seconds counter
   useEffect(() => {
@@ -273,15 +326,15 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
   const beadY = 160 + beadRadius * Math.sin(beadRad);
 
   return (
-    <div className="flex flex-col items-center w-full max-w-md mx-auto px-4 pb-28 pt-2 relative select-none">
+    <div className="flex flex-col items-center w-full max-w-md mx-auto px-4 pb-8 pt-1 relative select-none">
       {/* Background Ambience Glow */}
       <div
-        className="absolute top-20 left-1/2 -translate-x-1/2 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none transition-transform duration-700 ease-out"
+        className="absolute top-12 left-1/2 -translate-x-1/2 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none transition-transform duration-700 ease-out"
         style={{ transform: `translateX(-50%) scale(${orbScale * 1.1})` }}
       />
 
-      {/* Top Breath Timing Pill: • 4 • 8 • 4 • 0 */}
-      <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 text-xs font-mono tracking-widest text-on-surface shadow-sm mb-6">
+      {/* Top Breath Timing Pill: • 4 • 8 • 4 • 0 - clearly visible on iPhone 12 */}
+      <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 text-xs font-mono tracking-widest text-on-surface shadow-sm mb-3">
         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
         <span className={phase === 'inhale' ? 'text-primary font-bold scale-110' : ''}>{pattern.inhale}</span>
         <span className="text-on-surface-variant">•</span>
@@ -292,8 +345,8 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
         <span className={phase === 'hold2' ? 'text-primary font-bold scale-110' : ''}>{pattern.hold2}</span>
       </div>
 
-      {/* Center Breathing Orb Ring */}
-      <div className="relative w-80 h-80 flex items-center justify-center my-3">
+      {/* Center Breathing Orb Ring (Fitted for iPhone 12 390x844 viewport) */}
+      <div className="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center my-2">
         {/* Outer Dynamic Aura Glow synchronized with breath scale */}
         <div
           className="absolute inset-4 rounded-full bg-primary/15 blur-2xl pointer-events-none"
@@ -301,7 +354,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
         />
 
         {/* SVG Circular Ring and Orbiting Bead */}
-        <svg className="w-80 h-80 absolute inset-0 -rotate-90 pointer-events-none" viewBox="0 0 320 320">
+        <svg className="w-72 h-72 sm:w-80 sm:h-80 absolute inset-0 -rotate-90 pointer-events-none" viewBox="0 0 320 320">
           <defs>
             <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#7dd3fc" />
@@ -437,13 +490,21 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
         </button>
       </div>
 
-      {/* Session Remaining Pill */}
-      <div className="flex items-center justify-center gap-2 px-5 py-2 rounded-full bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 text-xs font-medium text-on-surface mt-5 shadow-sm">
-        <span className="material-symbols-outlined text-primary text-[16px]">schedule</span>
-        <span>Session Remaining:</span>
-        <span className="font-mono font-bold text-primary tracking-wide">
-          {formatSeconds(sessionRemainingSec)}
-        </span>
+      {/* Session Remaining Pill & Screen Awake Status */}
+      <div className="flex flex-col items-center gap-1.5 mt-3">
+        <div className="flex items-center justify-center gap-2 px-5 py-2 rounded-full bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 text-xs font-medium text-on-surface shadow-sm">
+          <span className="material-symbols-outlined text-primary text-[16px]">schedule</span>
+          <span>Session Remaining:</span>
+          <span className="font-mono font-bold text-primary tracking-wide">
+            {formatSeconds(sessionRemainingSec)}
+          </span>
+        </div>
+        {wakeLockActive && (
+          <div className="flex items-center gap-1.5 text-[10px] text-primary/80 font-medium tracking-wider uppercase">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span>Screen Awake (No Timeout)</span>
+          </div>
+        )}
       </div>
 
       {/* Bottom Session Action Buttons */}

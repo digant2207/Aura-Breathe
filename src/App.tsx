@@ -85,8 +85,14 @@ export default function App() {
         onNavigate={(tab) => setActiveTab(tab)}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 w-full pt-16 relative z-10">
+      {/* Main Content Area with iPhone 12+ Notch and Home Indicator Safe Area Insets */}
+      <main
+        className="flex-1 w-full relative z-10 overflow-x-hidden"
+        style={{
+          paddingTop: 'calc(3.75rem + env(safe-area-inset-top, 0px))',
+          paddingBottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px))'
+        }}
+      >
         {activeTab === 'daily-zen' && (
           <DailyZenScreen
             onStartSession={handleStartSession}

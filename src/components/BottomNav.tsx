@@ -20,7 +20,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 pb-safe bg-[#0f1524]/85 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.5)] border-t border-[#7dd3fc]/10">
+    <nav
+      className="fixed bottom-0 inset-x-0 z-50 bg-[#0f1524]/90 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.5)] border-t border-[#7dd3fc]/10 transition-all"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
       <div className="max-w-md mx-auto flex justify-around items-center h-16 px-2">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;

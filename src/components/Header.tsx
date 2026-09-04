@@ -24,8 +24,11 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onNavigate }) => {
   };
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 bg-[#0f1524]/75 backdrop-blur-2xl pt-safe shadow-[0_4px_20px_rgba(0,0,0,0.35)] border-b border-[#7dd3fc]/10">
-      <div className="max-w-md mx-auto h-16 px-4 flex items-center justify-between">
+    <header
+      className="fixed top-0 inset-x-0 z-50 bg-[#0f1524]/90 backdrop-blur-2xl shadow-[0_4px_20px_rgba(0,0,0,0.35)] border-b border-[#7dd3fc]/10 transition-all"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
+      <div className="max-w-md mx-auto h-14 px-4 flex items-center justify-between">
         {/* Left: Brand Logo & Wordmark matching the 2nd uploaded icon image */}
         <button
           onClick={() => onNavigate('daily-zen')}

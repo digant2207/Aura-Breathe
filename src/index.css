@@ -57,7 +57,7 @@
     user-select: none;
   }
 
-  /* Hide scrollbars for slick mobile app look */
+    /* Hide scrollbars for slick mobile app look */
   ::-webkit-scrollbar {
     display: none;
   }
@@ -66,6 +66,31 @@
     scrollbar-width: none;
   }
 }
+
+/* iOS Safe Area & iPhone 12+ notch/home indicator utilities */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.top-safe {
+  top: env(safe-area-inset-top, 0px);
+}
+
+.bottom-safe {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
 
 .glass-card {
   background: rgba(20, 28, 46, 0.6);
