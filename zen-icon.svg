@@ -1,0 +1,46 @@
+<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#0a0e1a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="lotusGlowGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#cffafe" />
+      <stop offset="60%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0891b2" />
+    </linearGradient>
+    <linearGradient id="petalSideGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#67e8f9" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <filter id="bloomFilter" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="glow" />
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background squircle with neon border -->
+  <rect x="3" y="3" width="122" height="122" rx="30" fill="#0c1222" stroke="#38bdf8" stroke-width="2.5" stroke-opacity="0.6"/>
+  <rect x="3" y="3" width="122" height="122" rx="30" fill="url(#bgGlow)"/>
+
+  <g transform="translate(14, 12) scale(1)">
+    <!-- Outer Left Leaf / Petal -->
+    <path d="M 50 62 C 30 58 16 48 24 38 C 30 46 40 54 50 62 Z" fill="url(#petalSideGrad)" opacity="0.8" filter="url(#bloomFilter)" />
+    <!-- Outer Right Leaf / Petal -->
+    <path d="M 50 62 C 70 58 84 48 76 38 C 70 46 60 54 50 62 Z" fill="url(#petalSideGrad)" opacity="0.8" filter="url(#bloomFilter)" />
+    <!-- Mid-Inner Left Petal -->
+    <path d="M 50 62 C 34 50 30 32 42 22 C 45 34 47 48 50 62 Z" fill="url(#petalSideGrad)" opacity="0.9" filter="url(#bloomFilter)" />
+    <!-- Mid-Inner Right Petal -->
+    <path d="M 50 62 C 66 50 70 32 58 22 C 55 34 53 48 50 62 Z" fill="url(#petalSideGrad)" opacity="0.9" filter="url(#bloomFilter)" />
+    <!-- Central Crown Petal -->
+    <path d="M 50 14 C 43 28 43 45 50 62 C 57 45 57 28 50 14 Z" fill="url(#lotusGlowGrad)" filter="url(#bloomFilter)" />
+    <!-- Calyx / Base Ripple -->
+    <path d="M 33 64 C 43 68 57 68 67 64 C 61 67 39 67 33 64 Z" fill="#a5f3fc" opacity="0.9" />
+    <circle cx="50" cy="63" r="1.5" fill="#e0f2fe" />
+    <!-- ZEN text -->
+    <text x="50" y="85" text-anchor="middle" fill="#a5f3fc" font-size="12.5" font-weight="700" font-family="system-ui, -apple-system, sans-serif" letter-spacing="3.5">ZEN</text>
+  </g>
+</svg>
