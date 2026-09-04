@@ -1,0 +1,19 @@
+{
+  "name": "Aura Breathe — Mindful Breathing & Soundscapes",
+  "short_name": "Aura Breathe",
+  "description": "Mindful breathing pacer, restorative ambient soundscapes, and personal wellness progress tracker.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "zen-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

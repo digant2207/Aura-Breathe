@@ -8,6 +8,7 @@
     "build": "vite build",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
+    "auto-update": "git add . && git commit -m \"Auto update\" && git push origin main && npm run build && npx gh-pages -d dist",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
