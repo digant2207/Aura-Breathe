@@ -33,6 +33,7 @@ export interface TransitionBell {
   freq: string;
   description: string;
   pitchHz: number;
+  bellType: 'temple-bell' | 'water-drop' | 'tibetan-bowl' | 'koshi-chime' | 'wood-block';
 }
 
 export interface Badge {

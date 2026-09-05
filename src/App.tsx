@@ -23,14 +23,74 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('daily-zen');
   const [selectedDuration, setSelectedDuration] = useState<number>(10);
   const [activePattern, setActivePattern] = useState<BreathPattern>(DEFAULT_PATTERNS[0]);
-  const [customSlots, setCustomSlots] = useState<BreathPattern[]>(INITIAL_CUSTOM_PATTERNS);
 
-  const [currentTrack, setCurrentTrack] = useState<SoundscapeTrack>(SOUNDSCAPE_TRACKS[0]);
-  const [selectedBell, setSelectedBell] = useState<TransitionBell>(TRANSITION_BELLS[0]);
+  // Persistent Custom Patterns in localStorage
+  const [customSlots, setCustomSlots] = useState<BreathPattern[]>(() => {
+    try {
+      const saved = localStorage.getItem('aura_custom_patterns');
+      return saved ? JSON.parse(saved) : INITIAL_CUSTOM_PATTERNS;
+    } catch {
+      return INITIAL_CUSTOM_PATTERNS;
+    }
+  });
+
+  // Persistent Current Soundscape Track in localStorage
+  const [currentTrack, setCurrentTrack] = useState<SoundscapeTrack>(() => {
+    try {
+      const saved = localStorage.getItem('aura_current_track');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const match = SOUNDSCAPE_TRACKS.find((t) => t.id === parsed.id);
+        if (match) return match;
+      }
+      return SOUNDSCAPE_TRACKS[0];
+    } catch {
+      return SOUNDSCAPE_TRACKS[0];
+    }
+  });
+
+  // Persistent Selected Bell in localStorage
+  const [selectedBell, setSelectedBell] = useState<TransitionBell>(() => {
+    try {
+      const saved = localStorage.getItem('aura_selected_bell');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const match = TRANSITION_BELLS.find((b) => b.id === parsed.id);
+        if (match) return match;
+      }
+      return TRANSITION_BELLS[0];
+    } catch {
+      return TRANSITION_BELLS[0];
+    }
+  });
+
   const [bellEnabled, setBellEnabled] = useState<boolean>(true);
 
-  const [userStats, setUserStats] = useState<UserStats>(USER_STATS);
+  // Persistent User Stats in localStorage starting from zero
+  const [userStats, setUserStats] = useState<UserStats>(() => {
+    try {
+      const saved = localStorage.getItem('aura_user_stats');
+      return saved ? JSON.parse(saved) : USER_STATS;
+    } catch {
+      return USER_STATS;
+    }
+  });
+
   const [isBreathingSessionRunning, setIsBreathingSessionRunning] = useState<boolean>(false);
+
+  const handleSelectTrack = (track: SoundscapeTrack) => {
+    setCurrentTrack(track);
+    try {
+      localStorage.setItem('aura_current_track', JSON.stringify(track));
+    } catch (_) {}
+  };
+
+  const handleSelectBell = (bell: TransitionBell) => {
+    setSelectedBell(bell);
+    try {
+      localStorage.setItem('aura_selected_bell', JSON.stringify(bell));
+    } catch (_) {}
+  };
 
   const handleStartSession = (durationMin: number, pattern: BreathPattern, soundName?: string) => {
     setSelectedDuration(durationMin);
@@ -40,7 +100,7 @@ export default function App() {
         t.title.toLowerCase().includes(soundName.toLowerCase())
       );
       if (match) {
-        setCurrentTrack(match);
+        handleSelectTrack(match);
       }
     }
     setIsBreathingSessionRunning(true);
@@ -51,15 +111,27 @@ export default function App() {
     setIsBreathingSessionRunning(false);
     const addedMinutes = Math.max(1, Math.round(completedSeconds / 60));
     const cycleTime = Math.max(1, activePattern.inhale + activePattern.hold1 + activePattern.exhale + activePattern.hold2);
-    const addedCycles = Math.round(completedSeconds / cycleTime);
+    const addedCycles = Math.max(1, Math.round(completedSeconds / cycleTime));
 
-    setUserStats((prev) => ({
-      ...prev,
-      todayMinutes: prev.todayMinutes + addedMinutes,
-      weeklyTotalMinutes: prev.weeklyTotalMinutes + addedMinutes,
-      totalSessions: prev.totalSessions + 1,
-      breathCycles: prev.breathCycles + addedCycles,
-    }));
+    setUserStats((prev) => {
+      const newStreak = prev.streakDays === 0 ? 1 : prev.streakDays;
+      const updated: UserStats = {
+        ...prev,
+        todayMinutes: prev.todayMinutes + addedMinutes,
+        weeklyTotalMinutes: prev.weeklyTotalMinutes + addedMinutes,
+        totalSessions: prev.totalSessions + 1,
+        breathCycles: prev.breathCycles + addedCycles,
+        streakDays: newStreak,
+        personalBestStreak: Math.max(prev.personalBestStreak, newStreak),
+        longestStreakDays: Math.max(prev.longestStreakDays, newStreak),
+        restingHrDelta: -1,
+        hrReductionBpm: Math.min(-2, prev.hrReductionBpm - 1),
+      };
+      try {
+        localStorage.setItem('aura_user_stats', JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
 
     setActiveTab('progress');
   };
@@ -68,8 +140,18 @@ export default function App() {
     setCustomSlots((prev) => {
       const copy = [...prev];
       copy[slotIndex] = pattern;
+      try {
+        localStorage.setItem('aura_custom_patterns', JSON.stringify(copy));
+      } catch (_) {}
       return copy;
     });
+  };
+
+  const handleResetStats = () => {
+    setUserStats(USER_STATS);
+    try {
+      localStorage.setItem('aura_user_stats', JSON.stringify(USER_STATS));
+    } catch (_) {}
   };
 
   return (
@@ -111,7 +193,9 @@ export default function App() {
             pattern={activePattern}
             durationMinutes={selectedDuration}
             onEndSession={handleEndSession}
-            activeSoundName={currentTrack.title}
+            currentTrack={currentTrack}
+            onChangeTrack={handleSelectTrack}
+            selectedBell={selectedBell}
             transitionBellEnabled={bellEnabled}
           />
         )}
@@ -119,16 +203,19 @@ export default function App() {
         {activeTab === 'soundscapes' && (
           <SoundscapesScreen
             currentTrack={currentTrack}
-            onSelectTrack={setCurrentTrack}
+            onSelectTrack={handleSelectTrack}
             selectedBell={selectedBell}
-            onSelectBell={setSelectedBell}
+            onSelectBell={handleSelectBell}
             bellEnabled={bellEnabled}
             onToggleBell={() => setBellEnabled(!bellEnabled)}
           />
         )}
 
         {activeTab === 'progress' && (
-          <ProgressScreen userStats={userStats} />
+          <ProgressScreen
+            userStats={userStats}
+            onResetStats={handleResetStats}
+          />
         )}
       </main>
 

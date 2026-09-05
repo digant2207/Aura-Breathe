@@ -4,12 +4,14 @@ import { UserStats, DayActivity } from '../types';
 
 interface ProgressScreenProps {
   userStats?: UserStats;
+  onResetStats?: () => void;
 }
 
 export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   userStats = USER_STATS,
+  onResetStats,
 }) => {
-  const [stats] = useState<UserStats>(userStats);
+  const stats = userStats;
   const [dailyReminder, setDailyReminder] = useState<boolean>(true);
   const [hapticGuidance, setHapticGuidance] = useState<boolean>(true);
   const [audioQuality, setAudioQuality] = useState<string>('Lossless Spatial Audio (48kHz)');
@@ -35,7 +37,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               >
                 local_fire_department
               </span>
-              <span>14-Day Streak</span>
+              <span>{stats.streakDays}-Day Streak</span>
             </div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-container/40 text-on-primary-container text-xs font-medium border border-primary/20">
               <span className="material-symbols-outlined text-primary text-sm">favorite</span>
@@ -466,6 +468,33 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               chevron_right
             </span>
           </div>
+
+          {/* Setting 4: Reset Progress to Zero */}
+          {onResetStats && (
+            <div
+              onClick={() => {
+                if (window.confirm('Reset all progress and streak stats back to zero?')) {
+                  onResetStats();
+                }
+              }}
+              className="flex items-center justify-between p-4 hover:bg-surface-container-high/40 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-9 h-9 rounded-lg bg-red-500/15 flex items-center justify-center text-red-400">
+                  <span className="material-symbols-outlined text-lg">restart_alt</span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-on-surface group-hover:text-red-400 transition-colors">
+                    Reset Progress
+                  </h4>
+                  <p className="text-xs text-on-surface-variant">Start streaks and sessions from zero</p>
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-on-surface-variant text-lg group-hover:text-red-400 transition-colors">
+                refresh
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BreathPattern, BreathPhase } from '../types';
+import { BreathPattern, BreathPhase, SoundscapeTrack, TransitionBell } from '../types';
+import { SOUNDSCAPE_TRACKS } from '../data/mockData';
 import { audioEngine } from '../utils/audioEngine';
 
 interface BreatheScreenProps {
   pattern: BreathPattern;
   durationMinutes: number;
   onEndSession: (completedSeconds: number) => void;
-  activeSoundName: string;
-  onChangeSoundName?: (name: string) => void;
+  currentTrack: SoundscapeTrack;
+  onChangeTrack?: (track: SoundscapeTrack) => void;
+  selectedBell: TransitionBell;
   transitionBellEnabled?: boolean;
 }
 
@@ -18,14 +20,25 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
   pattern,
   durationMinutes,
   onEndSession,
-  activeSoundName,
+  currentTrack,
+  onChangeTrack,
+  selectedBell,
   transitionBellEnabled = true,
 }) => {
+  // 3-second Get Ready Countdown before session begins
+  const [readyCountdown, setReadyCountdown] = useState<number>(3);
+  const isSessionStarted = readyCountdown === 0;
+
   // Total session countdown in seconds
   const totalSessionSec = durationMinutes * 60;
   const [sessionRemainingSec, setSessionRemainingSec] = useState<number>(totalSessionSec);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [isFinishingOnExhale, setIsFinishingOnExhale] = useState<boolean>(false);
+
+  // Sound selection modal inside session
+  const [showSoundModal, setShowSoundModal] = useState<boolean>(false);
+  const [soundPlaying, setSoundPlaying] = useState<boolean>(true);
 
   // Breath cycle state
   const [phase, setPhase] = useState<BreathPhase>('inhale');
@@ -39,7 +52,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
   const [currentRound, setCurrentRound] = useState<number>(1);
   const completedSecondsRef = useRef<number>(0);
 
-  // Screen Wake Lock API state to prevent iPhone screen timeout
+  // Screen Wake Lock API state to prevent screen timeout
   const [wakeLockActive, setWakeLockActive] = useState<boolean>(false);
   const wakeLockRef = useRef<any>(null);
 
@@ -50,7 +63,11 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
   const patternRef = useRef<BreathPattern>(pattern);
   const isPausedRef = useRef<boolean>(isPaused);
   const isCompletedRef = useRef<boolean>(isCompleted);
+  const isSessionStartedRef = useRef<boolean>(isSessionStarted);
   const transitionBellEnabledRef = useRef<boolean>(transitionBellEnabled);
+  const selectedBellRef = useRef<TransitionBell>(selectedBell);
+  const sessionRemainingSecRef = useRef<number>(sessionRemainingSec);
+  const isFinishingOnExhaleRef = useRef<boolean>(isFinishingOnExhale);
 
   // Keep refs synchronized
   useEffect(() => {
@@ -62,29 +79,55 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
   }, [pattern]);
 
   useEffect(() => {
+    isSessionStartedRef.current = isSessionStarted;
+  }, [isSessionStarted]);
+
+  useEffect(() => {
     transitionBellEnabledRef.current = transitionBellEnabled;
   }, [transitionBellEnabled]);
 
-  // Sound playing state
-  const [soundPlaying, setSoundPlaying] = useState<boolean>(true);
-
-  // Play ambient audio when screen mounts
   useEffect(() => {
-    if (activeSoundName.toLowerCase().includes('rain')) {
-      audioEngine.playTrack('rain');
-    } else if (activeSoundName.toLowerCase().includes('theta')) {
-      audioEngine.playTrack('theta');
-    } else if (activeSoundName.toLowerCase().includes('aurora') || activeSoundName.toLowerCase().includes('chimes')) {
-      audioEngine.playTrack('aurora');
-    } else {
-      audioEngine.playTrack('rain');
-    }
+    selectedBellRef.current = selectedBell;
+  }, [selectedBell]);
+
+  useEffect(() => {
+    sessionRemainingSecRef.current = sessionRemainingSec;
+  }, [sessionRemainingSec]);
+
+  useEffect(() => {
+    isFinishingOnExhaleRef.current = isFinishingOnExhale;
+  }, [isFinishingOnExhale]);
+
+  // 3-second Get Ready Countdown Timer
+  useEffect(() => {
+    if (readyCountdown <= 0) return;
+
+    const timer = window.setInterval(() => {
+      setReadyCountdown((prev) => {
+        if (prev <= 1) {
+          // Prep finished! Cue soft start chime
+          if (transitionBellEnabledRef.current) {
+            audioEngine.playTransitionCue(selectedBellRef.current.bellType || selectedBellRef.current.id, 432);
+          }
+          phaseStartTimeRef.current = performance.now();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [readyCountdown]);
+
+  // Play ambient audio immediately so user feels calm even during get-ready
+  useEffect(() => {
+    audioEngine.playTrack(currentTrack.audioType || currentTrack.title);
     setSoundPlaying(true);
 
     return () => {
       audioEngine.stopAmbient();
     };
-  }, [activeSoundName]);
+  }, [currentTrack]);
 
   // Handle pause and resume without animation skips
   useEffect(() => {
@@ -102,7 +145,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
     isCompletedRef.current = isCompleted;
   }, [isCompleted]);
 
-  // Screen Wake Lock API: Keeps iPhone screen alive and prevents timeout/sleep during breathing
+  // Screen Wake Lock API
   useEffect(() => {
     let isMounted = true;
 
@@ -123,7 +166,6 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
           }
         }
       } catch (err) {
-        // Wake lock can fail if system battery saver is on or user switches tabs
         console.warn('Screen WakeLock unavailable:', err);
       }
     };
@@ -151,24 +193,25 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
     };
   }, [isPaused, isCompleted]);
 
-  // Overall session seconds counter
+  // Session seconds countdown
   useEffect(() => {
-    if (isPaused || isCompleted) return;
+    if (!isSessionStarted || isPaused || isCompleted) return;
 
     const interval = window.setInterval(() => {
+      completedSecondsRef.current += 1;
       setSessionRemainingSec((prev) => {
         if (prev <= 1) {
-          setIsCompleted(true);
-          audioEngine.playTransitionChime(528);
+          // Timer reached zero: Do NOT abruptly stop!
+          // Extend slightly to cleanly complete the current breath through exhale (< 20s extension)
+          setIsFinishingOnExhale(true);
           return 0;
         }
-        completedSecondsRef.current += 1;
         return prev - 1;
       });
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [isPaused, isCompleted]);
+  }, [isSessionStarted, isPaused, isCompleted]);
 
   // Helper to determine phase duration in seconds
   const getPhaseDuration = (currentPhase: BreathPhase, currentPattern: BreathPattern): number => {
@@ -184,13 +227,12 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
     }
   };
 
-  // Main 60 FPS silky-smooth animation & phase transition loop
+  // Main 60 FPS animation & phase transition loop
   useEffect(() => {
     let animFrameId: number;
-    phaseStartTimeRef.current = performance.now();
 
     const loop = (now: number) => {
-      if (!isPausedRef.current && !isCompletedRef.current) {
+      if (isSessionStartedRef.current && !isPausedRef.current && !isCompletedRef.current) {
         const curPhase = phaseRef.current;
         const curPattern = patternRef.current;
         const durationSec = getPhaseDuration(curPhase, curPattern);
@@ -203,21 +245,17 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
         let scale = 1.0;
 
         if (curPhase === 'inhale') {
-          // Clockwise fill from 0% to 100%
           const eased = easeInOutSine(rawFraction);
           currentFill = eased;
           scale = 0.90 + 0.25 * eased;
         } else if (curPhase === 'hold1') {
-          // Hold full at 100% with gentle breathing resonance
           currentFill = 1.0;
           scale = 1.15 + 0.015 * Math.sin(now * 0.003);
         } else if (curPhase === 'exhale') {
-          // Anticlockwise empty from 100% down to 0%
           const eased = easeInOutSine(rawFraction);
           currentFill = 1.0 - eased;
           scale = 1.15 - 0.27 * eased;
         } else if (curPhase === 'hold2') {
-          // Hold empty at 0% in calm stillness
           currentFill = 0.0;
           scale = 0.88;
         }
@@ -229,16 +267,29 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
         const secRemaining = Math.max(0, Math.ceil(durationSec * (1 - rawFraction)));
         setPhaseSecRemaining(secRemaining);
 
-        // 3. Handle phase completion and seamless transition
+        // 3. Handle phase completion and transition
         if (elapsedMs >= durationMs) {
+          // EXHALE COMPLETION RULE:
+          // A cycle completes after exhale (or after hold2 if hold2 > 0).
+          const isCycleEndingPhase = (curPhase === 'exhale' && curPattern.hold2 === 0) || curPhase === 'hold2';
+
+          if (isCycleEndingPhase) {
+            // Check session ending conditions:
+            // Condition A: <= 20 seconds remaining -> end session early on this exhale!
+            // Condition B: Timer expired (< 20s extension used) -> complete on this exhale!
+            const remaining = sessionRemainingSecRef.current;
+            if (remaining <= 20 || isFinishingOnExhaleRef.current) {
+              setIsCompleted(true);
+              isCompletedRef.current = true;
+              audioEngine.playTransitionCue(selectedBellRef.current.bellType || selectedBellRef.current.id, 528);
+              return;
+            }
+          }
+
           let nextPhase: BreathPhase = 'inhale';
 
           if (curPhase === 'inhale') {
-            if (curPattern.hold1 > 0) {
-              nextPhase = 'hold1';
-            } else {
-              nextPhase = 'exhale';
-            }
+            nextPhase = curPattern.hold1 > 0 ? 'hold1' : 'exhale';
           } else if (curPhase === 'hold1') {
             nextPhase = 'exhale';
           } else if (curPhase === 'exhale') {
@@ -253,9 +304,10 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
             setCurrentRound((r) => Math.min(calculatedTotalRounds, r + 1));
           }
 
-          // Sound chime cues
+          // Play transition bell sound
           if (transitionBellEnabledRef.current) {
-            audioEngine.playTransitionChime(
+            audioEngine.playTransitionCue(
+              selectedBellRef.current.bellType || selectedBellRef.current.id,
               nextPhase === 'inhale' ? 432 : nextPhase === 'hold1' ? 324 : 216
             );
           }
@@ -278,9 +330,18 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
       audioEngine.stopAmbient();
       setSoundPlaying(false);
     } else {
-      audioEngine.playTrack(activeSoundName.toLowerCase().includes('chimes') ? 'aurora' : 'rain');
+      audioEngine.playTrack(currentTrack.audioType);
       setSoundPlaying(true);
     }
+  };
+
+  const handleSelectNewTrack = (track: SoundscapeTrack) => {
+    if (onChangeTrack) {
+      onChangeTrack(track);
+    }
+    audioEngine.playTrack(track.audioType);
+    setSoundPlaying(true);
+    setShowSoundModal(false);
   };
 
   const formatSeconds = (sec: number) => {
@@ -307,19 +368,8 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
   // Circle Geometry
   const beadRadius = 142; // px
   const circumference = 2 * Math.PI * beadRadius; // ~892.21 px
-
-  // Stroke Dashoffset:
-  // At fillProgress = 0 -> offset = circumference (empty)
-  // At fillProgress = 1 -> offset = 0 (full)
-  // Inhale: fillProgress goes 0 -> 1 (clockwise fill)
-  // Hold: fillProgress = 1 (held steady)
-  // Exhale: fillProgress goes 1 -> 0 (anticlockwise empty)
-  // Rest: fillProgress = 0 (held steady)
   const strokeDashoffset = circumference * (1 - fillProgress);
 
-  // Orbiting Bead calculation tracking the stroke tip:
-  // fillProgress = 0 -> angle = -90 deg (12 o'clock / top)
-  // fillProgress = 1 -> angle = 270 deg (full 360 deg turn back to top)
   const beadAngleDeg = -90 + fillProgress * 360;
   const beadRad = (beadAngleDeg * Math.PI) / 180;
   const beadX = 160 + beadRadius * Math.cos(beadRad);
@@ -333,7 +383,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
         style={{ transform: `translateX(-50%) scale(${orbScale * 1.1})` }}
       />
 
-      {/* Top Breath Timing Pill: • 4 • 8 • 4 • 0 - clearly visible on iPhone 12 */}
+      {/* Top Breath Timing Pill */}
       <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 text-xs font-mono tracking-widest text-on-surface shadow-sm mb-3">
         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
         <span className={phase === 'inhale' ? 'text-primary font-bold scale-110' : ''}>{pattern.inhale}</span>
@@ -345,9 +395,9 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
         <span className={phase === 'hold2' ? 'text-primary font-bold scale-110' : ''}>{pattern.hold2}</span>
       </div>
 
-      {/* Center Breathing Orb Ring (Fitted for iPhone 12 390x844 viewport) */}
+      {/* Center Breathing Orb Ring */}
       <div className="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center my-2">
-        {/* Outer Dynamic Aura Glow synchronized with breath scale */}
+        {/* Outer Dynamic Aura Glow */}
         <div
           className="absolute inset-4 rounded-full bg-primary/15 blur-2xl pointer-events-none"
           style={{ transform: `scale(${orbScale})` }}
@@ -380,7 +430,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
             strokeWidth="14"
           />
 
-          {/* Active Glowing Circle Ring (Smooth 60fps fill & empty) */}
+          {/* Active Glowing Circle Ring */}
           <circle
             cx="160"
             cy="160"
@@ -394,7 +444,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
             filter="url(#glow)"
           />
 
-          {/* Orbiting Progress Bead tracking the stroke tip */}
+          {/* Orbiting Progress Bead */}
           <circle
             cx={beadX}
             cy={beadY}
@@ -406,34 +456,68 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
           />
         </svg>
 
-        {/* Center Text Information synchronized with breathing expansion */}
-        <div
-          className="flex flex-col items-center justify-center text-center z-10 pointer-events-none"
-          style={{ transform: `scale(${orbScale})` }}
-        >
-          {/* Pause / Flow indicator */}
-          <div className="text-secondary mb-1">
-            <span className="material-symbols-outlined text-xl">
-              {isPaused ? 'play_arrow' : 'pause'}
+        {/* 3-Second "Get Ready" Preparation Overlay */}
+        {!isSessionStarted ? (
+          <div className="flex flex-col items-center justify-center text-center z-20 space-y-2 p-6 animate-fade-in">
+            <span className="text-xs uppercase tracking-widest text-primary font-semibold">
+              Get Ready
             </span>
+            <div className="w-20 h-20 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center shadow-[0_0_30px_rgba(125,211,252,0.3)] animate-pulse">
+              <span className="text-4xl font-headline font-bold text-primary">
+                {readyCountdown}
+              </span>
+            </div>
+            <p className="text-[11px] text-on-surface-variant max-w-[180px]">
+              Settle into your posture and relax your shoulders
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setReadyCountdown(0);
+                phaseStartTimeRef.current = performance.now();
+                if (transitionBellEnabledRef.current) {
+                  audioEngine.playTransitionCue(selectedBellRef.current.bellType || selectedBellRef.current.id, 432);
+                }
+              }}
+              className="text-[10px] text-primary/80 hover:text-primary font-medium tracking-wider uppercase pt-1 cursor-pointer focus:outline-none"
+            >
+              Start Now ›
+            </button>
           </div>
+        ) : (
+          /* Center Breathing Status Text */
+          <div
+            className="flex flex-col items-center justify-center text-center z-10 pointer-events-none"
+            style={{ transform: `scale(${orbScale})` }}
+          >
+            <div className="text-secondary mb-1">
+              <span className="material-symbols-outlined text-xl">
+                {isPaused ? 'play_arrow' : 'pause'}
+              </span>
+            </div>
 
-          {/* Phase Name: INHALE / HOLD / EXHALE / REST */}
-          <h2 className="text-xl font-headline font-bold tracking-widest text-on-surface">
-            {currentDisplay.label}
-          </h2>
+            <h2 className="text-xl font-headline font-bold tracking-widest text-on-surface">
+              {currentDisplay.label}
+            </h2>
 
-          {/* Subtext: SUSTAIN SOFTLY */}
-          <p className="text-[11px] font-medium tracking-wider uppercase text-on-surface-variant mt-0.5">
-            {currentDisplay.subtext}
-          </p>
+            <p className="text-[11px] font-medium tracking-wider uppercase text-on-surface-variant mt-0.5">
+              {currentDisplay.subtext}
+            </p>
 
-          {/* Phase Digital Countdown */}
-          <div className="text-3xl font-headline font-bold text-tertiary tracking-tight mt-2 drop-shadow-[0_0_12px_rgba(200,160,240,0.5)]">
-            {formatSeconds(phaseSecRemaining)}
+            <div className="text-3xl font-headline font-bold text-tertiary tracking-tight mt-2 drop-shadow-[0_0_12px_rgba(200,160,240,0.5)]">
+              {formatSeconds(phaseSecRemaining)}
+            </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Finishing on Exhale Notification Badge */}
+      {(isFinishingOnExhale || (isSessionStarted && sessionRemainingSec <= 20)) && !isCompleted && (
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container/40 border border-secondary/30 text-secondary text-[11px] font-medium animate-pulse mb-2">
+          <span className="material-symbols-outlined text-xs">south</span>
+          <span>Concluding peacefully on exhale</span>
+        </div>
+      )}
 
       {/* 3 Status Cards underneath */}
       <div className="grid grid-cols-3 gap-2.5 w-full mt-4">
@@ -445,7 +529,6 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
           <div className="text-lg font-headline font-bold text-on-surface mt-1">
             {currentRound} <span className="text-on-surface-variant font-normal">/ {calculatedTotalRounds}</span>
           </div>
-          {/* 8 Dot Indicators */}
           <div className="flex items-center gap-1 mt-2">
             {Array.from({ length: Math.min(8, calculatedTotalRounds) }).map((_, i) => (
               <span
@@ -458,31 +541,39 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Sound Toggle */}
+        {/* Card 2: In-Session Sound Track Switcher */}
         <button
           type="button"
-          onClick={toggleSound}
-          className="bg-surface-container/60 backdrop-blur-xl rounded-xl p-3 flex flex-col justify-between items-center text-center shadow-md border border-outline-variant/30 active:scale-95 transition-transform focus:outline-none cursor-pointer"
+          onClick={() => setShowSoundModal(true)}
+          className="bg-surface-container/60 backdrop-blur-xl rounded-xl p-3 flex flex-col justify-between items-center text-center shadow-md border border-outline-variant/30 active:scale-95 transition-transform focus:outline-none cursor-pointer group"
+          title="Tap to change or toggle sound track"
         >
-          <span className="material-symbols-outlined text-primary text-base">water_drop</span>
-          <span className="text-xs font-semibold text-on-surface truncate w-full mt-1">
-            {activeSoundName}
+          <div className="flex items-center gap-1">
+            <span className="material-symbols-outlined text-primary text-base">music_note</span>
+            <span className="text-[9px] text-on-surface-variant uppercase font-semibold">Track</span>
+          </div>
+          <span className="text-xs font-semibold text-on-surface truncate w-full mt-1 group-hover:text-primary transition-colors">
+            {currentTrack.title}
           </span>
-          <span className="text-[10px] font-bold tracking-wider text-primary uppercase mt-1">
-            {soundPlaying ? 'PLAYING' : 'MUTED'}
+          <span className="text-[10px] font-bold tracking-wider text-primary uppercase mt-1 flex items-center gap-0.5">
+            <span>{soundPlaying ? 'PLAYING' : 'MUTED'}</span>
+            <span className="material-symbols-outlined text-[12px]">expand_more</span>
           </span>
         </button>
 
-        {/* Card 3: Aurora Chimes Preview */}
+        {/* Card 3: Transition Bell Indicator & Preview */}
         <button
           type="button"
-          onClick={() => audioEngine.playTransitionChime(432)}
+          onClick={() => audioEngine.playTransitionCue(selectedBell.bellType || selectedBell.id, selectedBell.pitchHz)}
           className="bg-surface-container/60 backdrop-blur-xl rounded-xl p-3 flex flex-col justify-between items-center text-center shadow-md border border-outline-variant/30 active:scale-95 transition-transform focus:outline-none cursor-pointer"
-          title="Tap to preview chime"
+          title="Tap to preview transition chime"
         >
-          <span className="material-symbols-outlined text-tertiary text-base">graphic_eq</span>
+          <div className="flex items-center gap-1">
+            <span className="material-symbols-outlined text-tertiary text-base">notifications</span>
+            <span className="text-[9px] text-on-surface-variant uppercase font-semibold">Cue</span>
+          </div>
           <span className="text-xs font-semibold text-on-surface truncate w-full mt-1">
-            Bell Chime
+            {selectedBell.name}
           </span>
           <span className="text-[10px] font-bold tracking-wider text-tertiary uppercase mt-1">
             {transitionBellEnabled ? 'ACTIVE' : 'MUTED'}
@@ -509,7 +600,6 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
 
       {/* Bottom Session Action Buttons */}
       <div className="grid grid-cols-2 gap-3 w-full mt-5">
-        {/* End Session Button */}
         <button
           type="button"
           onClick={() => onEndSession(completedSecondsRef.current)}
@@ -519,7 +609,6 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
           <span>End Session</span>
         </button>
 
-        {/* Pause / Resume Button */}
         <button
           type="button"
           onClick={() => setIsPaused(!isPaused)}
@@ -531,6 +620,87 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
           <span>{isPaused ? 'Resume' : 'Pause'}</span>
         </button>
       </div>
+
+      {/* In-Session Sound Track Switcher Modal */}
+      {showSoundModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-fade-in">
+          <div className="w-full max-w-sm bg-surface-container/95 border border-primary/30 rounded-2xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-headline font-semibold text-on-surface">
+                  Change Ambient Sound
+                </h4>
+                <p className="text-[11px] text-on-surface-variant">
+                  Select a calming soundscape for this session
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSoundModal(false)}
+                className="text-on-surface-variant hover:text-on-surface p-1"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {/* Mute/Play Quick Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleSound}
+              className={`w-full py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold border transition-all ${
+                soundPlaying
+                  ? 'bg-primary/20 border-primary/40 text-primary'
+                  : 'bg-surface-container-highest border-outline-variant text-on-surface-variant'
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">
+                {soundPlaying ? 'volume_up' : 'volume_off'}
+              </span>
+              <span>{soundPlaying ? 'Audio Playing (Tap to Mute)' : 'Audio Muted (Tap to Play)'}</span>
+            </button>
+
+            {/* All 6 Soundscapes */}
+            <div className="space-y-2">
+              {SOUNDSCAPE_TRACKS.map((track) => {
+                const isCurrent = currentTrack.id === track.id;
+                return (
+                  <div
+                    key={track.id}
+                    onClick={() => handleSelectNewTrack(track)}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                      isCurrent
+                        ? 'bg-primary/20 border-primary/50 shadow-[0_0_12px_rgba(125,211,252,0.2)]'
+                        : 'bg-surface-container-high/50 border-outline-variant/30 hover:bg-surface-container-high'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                      <img src={track.imageUrl} alt={track.title} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-on-surface truncate">
+                          {track.title}
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-primary/15 text-primary">
+                          {track.tag}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-on-surface-variant truncate">
+                        {track.subtitle}
+                      </p>
+                    </div>
+                    {isCurrent && (
+                      <span className="material-symbols-outlined text-primary text-base">
+                        check_circle
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Celebration Modal on Session Complete */}
       {isCompleted && (
@@ -544,19 +714,19 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
                 Session Complete
               </h3>
               <p className="text-xs text-on-surface-variant">
-                You completed {Math.round(completedSecondsRef.current / 60)} mindful minutes of conscious breathwork.
+                You completed {Math.max(1, Math.round(completedSecondsRef.current / 60))} mindful minutes of conscious breathwork.
               </p>
             </div>
             <div className="flex items-center gap-2 py-1.5 px-3 rounded-full bg-primary/15 text-primary text-xs font-semibold">
               <span className="material-symbols-outlined text-sm">local_fire_department</span>
-              <span>Daily Streak Extended!</span>
+              <span>Session Concluded On Exhale!</span>
             </div>
             <button
               type="button"
               onClick={() => onEndSession(completedSecondsRef.current)}
               className="w-full py-2.5 rounded-xl bg-primary text-on-primary font-semibold text-xs shadow-md active:scale-95 transition-all cursor-pointer"
             >
-              Done & View Progress
+              Done &amp; View Progress
             </button>
           </div>
         </div>

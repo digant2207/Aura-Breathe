@@ -55,7 +55,7 @@ export const SoundscapesScreen: React.FC<SoundscapesScreenProps> = ({
   const handleTestBell = (e: React.MouseEvent, bell: TransitionBell) => {
     e.stopPropagation();
     onSelectBell(bell);
-    audioEngine.playTransitionChime(bell.pitchHz);
+    audioEngine.playTransitionCue(bell.bellType || bell.id, bell.pitchHz);
   };
 
   const filteredTracks = tracks.filter((t) => {
@@ -347,7 +347,7 @@ export const SoundscapesScreen: React.FC<SoundscapesScreenProps> = ({
                   const newVol = bellVolume >= 100 ? 0 : bellVolume + 25;
                   setBellVolume(newVol);
                   audioEngine.setVolume(newVol / 100);
-                  if (newVol > 0) audioEngine.playTransitionChime(selectedBell.pitchHz);
+                  if (newVol > 0) audioEngine.playTransitionCue(selectedBell.bellType || selectedBell.id, selectedBell.pitchHz);
                 }}
                 className="text-on-surface-variant hover:text-primary transition-colors focus:outline-none"
                 title="Change Chime Volume"
@@ -372,7 +372,7 @@ export const SoundscapesScreen: React.FC<SoundscapesScreenProps> = ({
           </div>
         </div>
 
-        {/* List of 3 Transition Bells */}
+        {/* List of 5 Transition Bells */}
         <div className="space-y-2">
           {TRANSITION_BELLS.map((bell) => {
             const isSelected = selectedBell.id === bell.id;
@@ -393,7 +393,15 @@ export const SoundscapesScreen: React.FC<SoundscapesScreenProps> = ({
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">
-                      {bell.id === 'tibetan-bowl' ? 'radio_button_checked' : bell.id === 'zen-temple' ? 'wb_sunny' : 'air'}
+                      {bell.bellType === 'water-drop'
+                        ? 'water_drop'
+                        : bell.bellType === 'temple-bell'
+                        ? 'notifications_active'
+                        : bell.bellType === 'tibetan-bowl'
+                        ? 'radio_button_checked'
+                        : bell.bellType === 'wood-block'
+                        ? 'straighten'
+                        : 'air'}
                     </span>
                   </div>
                   <div className="flex flex-col min-w-0">

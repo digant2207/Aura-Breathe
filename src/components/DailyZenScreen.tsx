@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BreathPattern, TabType } from '../types';
-import { ASSETS, DEFAULT_PATTERNS } from '../data/mockData';
+import { ASSETS, DEFAULT_PATTERNS, BADGES } from '../data/mockData';
 
 interface DailyZenScreenProps {
   onStartSession: (durationMin: number, pattern: BreathPattern, soundName?: string) => void;
@@ -70,7 +70,7 @@ export const DailyZenScreen: React.FC<DailyZenScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full max-w-md mx-auto px-4 pb-28 space-y-6">
+    <div className="flex flex-col w-full max-w-md mx-auto px-4 pb-28 space-y-5">
       {/* Ambient Light Orbs (Background Glows) */}
       <div className="relative w-full">
         <div className="absolute -top-12 left-1/4 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
@@ -97,6 +97,56 @@ export const DailyZenScreen: React.FC<DailyZenScreenProps> = ({
             “Inhale peace, exhale noise”
           </p>
         </div>
+      </div>
+
+      {/* Badges Display as Small Icons on First Page */}
+      <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container/60 backdrop-blur-xl border border-outline-variant/30 shadow-md">
+        <div className="flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-primary text-base">military_tech</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">
+            Badges
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 px-1">
+          {BADGES.map((badge) => {
+            const isUnlocked = badge.status === 'unlocked';
+            return (
+              <button
+                key={badge.id}
+                type="button"
+                onClick={() => onNavigate('progress')}
+                title={`${badge.name}: ${badge.requirement}`}
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer relative ${
+                  isUnlocked
+                    ? badge.color === 'tertiary'
+                      ? 'bg-tertiary/20 text-tertiary border border-tertiary/40 shadow-[0_0_8px_rgba(200,160,240,0.3)]'
+                      : badge.color === 'secondary'
+                      ? 'bg-secondary/20 text-secondary border border-secondary/40 shadow-[0_0_8px_rgba(136,180,204,0.3)]'
+                      : 'bg-primary/20 text-primary border border-primary/40 shadow-[0_0_8px_rgba(125,211,252,0.3)]'
+                    : 'bg-surface-container-highest/60 text-on-surface-variant/40 border border-outline-variant/20'
+                }`}
+              >
+                <span
+                  className="material-symbols-outlined text-[14px]"
+                  style={{ fontVariationSettings: isUnlocked ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  {badge.icon}
+                </span>
+                {isUnlocked && (
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate('progress')}
+          className="text-[10px] text-primary font-medium hover:underline flex items-center gap-0.5 whitespace-nowrap pl-1"
+        >
+          <span>All</span>
+          <span className="material-symbols-outlined text-[12px]">chevron_right</span>
+        </button>
       </div>
 
       {/* Featured Quick Start Duration Glass Card */}

@@ -50,26 +50,43 @@ class AudioEngine {
     return this.isMuted;
   }
 
-  public playTrack(trackType: 'rain' | 'theta' | 'singing-bowl' | 'aurora' | 'fire' | 'stream') {
+  public playTrack(trackType: string) {
     this.initContext();
     if (!this.ctx || !this.ambientGain) return;
 
     // Stop current ambient sound
     this.stopAmbient();
 
-    this.currentTrackType = trackType;
+    const normalized = (trackType || '').toLowerCase();
+    let resolvedType: 'rain' | 'theta' | 'singing-bowl' | 'aurora' | 'fire' | 'stream' = 'stream';
+
+    if (normalized.includes('stream') || normalized.includes('glacial')) {
+      resolvedType = 'stream';
+    } else if (normalized.includes('rain')) {
+      resolvedType = 'rain';
+    } else if (normalized.includes('theta') || normalized.includes('arctic') || normalized.includes('binaural')) {
+      resolvedType = 'theta';
+    } else if (normalized.includes('aurora') || normalized.includes('northern') || normalized.includes('chimes')) {
+      resolvedType = 'aurora';
+    } else if (normalized.includes('fire') || normalized.includes('cedar') || normalized.includes('wood')) {
+      resolvedType = 'fire';
+    } else if (normalized.includes('bowl') || normalized.includes('tibetan') || normalized.includes('singing')) {
+      resolvedType = 'singing-bowl';
+    }
+
+    this.currentTrackType = resolvedType;
     this.isPlaying = true;
 
     try {
-      if (trackType === 'theta') {
+      if (resolvedType === 'theta') {
         this.playTheta432();
-      } else if (trackType === 'rain') {
+      } else if (resolvedType === 'rain') {
         this.playRain();
-      } else if (trackType === 'stream') {
+      } else if (resolvedType === 'stream') {
         this.playStream();
-      } else if (trackType === 'aurora') {
+      } else if (resolvedType === 'aurora') {
         this.playAuroraPad();
-      } else if (trackType === 'fire') {
+      } else if (resolvedType === 'fire') {
         this.playFire();
       } else {
         this.playSingingBowlDrone();
@@ -96,8 +113,9 @@ class AudioEngine {
     this.isPlaying = false;
   }
 
-  public toggleAmbient(trackType: 'rain' | 'theta' | 'singing-bowl' | 'aurora' | 'fire' | 'stream') {
-    if (this.isPlaying && this.currentTrackType === trackType) {
+  public toggleAmbient(trackType: string) {
+    const normalized = (trackType || '').toLowerCase();
+    if (this.isPlaying && this.currentTrackType && normalized.includes(this.currentTrackType)) {
       this.stopAmbient();
       return false;
     } else {
@@ -289,7 +307,202 @@ class AudioEngine {
     });
   }
 
-  // Resonant Phase Transition Bell chime (Tibetan bowl 216Hz, Temple chime 528Hz, Koshi chime 432Hz)
+  // 1. Zen Temple Bell (Japanese bronze gong with inharmonic overtones)
+  public playTempleBell() {
+    this.initContext();
+    if (!this.ctx || !this.bellGain || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    const baseFreq = 264; // Deep bronze tone
+    const partials = [
+      { ratio: 1.0, gain: 0.35, decay: 3.5, type: 'sine' as OscillatorType },
+      { ratio: 1.48, gain: 0.22, decay: 2.8, type: 'sine' as OscillatorType },
+      { ratio: 2.08, gain: 0.16, decay: 2.2, type: 'triangle' as OscillatorType },
+      { ratio: 2.76, gain: 0.12, decay: 1.8, type: 'sine' as OscillatorType },
+      { ratio: 3.82, gain: 0.08, decay: 1.4, type: 'triangle' as OscillatorType },
+    ];
+
+    partials.forEach(({ ratio, gain: gLevel, decay, type }) => {
+      if (!this.ctx || !this.bellGain) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(baseFreq * ratio, now);
+
+      const targetVol = gLevel * this.masterVolume;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(targetVol, now + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+      osc.connect(gain);
+      gain.connect(this.bellGain);
+
+      osc.start(now);
+      osc.stop(now + decay + 0.1);
+    });
+  }
+
+  // 2. Pure Water Drop (Rapid downward pitch glide with fluid bubble pop)
+  public playWaterDrop() {
+    this.initContext();
+    if (!this.ctx || !this.bellGain || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1600, now);
+    osc.frequency.exponentialRampToValueAtTime(580, now + 0.05);
+    osc.frequency.exponentialRampToValueAtTime(720, now + 0.12);
+
+    const volume = 0.42 * this.masterVolume;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(volume, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(this.bellGain);
+
+    osc.start(now);
+    osc.stop(now + 0.4);
+
+    // Subtle droplet ping harmonic
+    const ping = this.ctx.createOscillator();
+    const pingGain = this.ctx.createGain();
+    ping.type = 'sine';
+    ping.frequency.setValueAtTime(1200, now);
+    ping.frequency.exponentialRampToValueAtTime(900, now + 0.08);
+
+    pingGain.gain.setValueAtTime(volume * 0.3, now);
+    pingGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+
+    ping.connect(pingGain);
+    pingGain.connect(this.bellGain);
+
+    ping.start(now);
+    ping.stop(now + 0.2);
+  }
+
+  // 3. Tibetan Singing Bowl (Detuned dual sine waves for warm physical beating)
+  public playTibetanBowl() {
+    this.initContext();
+    if (!this.ctx || !this.bellGain || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    const freqs = [
+      { f: 216, g: 0.35, decay: 3.8 },
+      { f: 218.4, g: 0.35, decay: 3.8 },
+      { f: 432, g: 0.18, decay: 2.6 },
+      { f: 648, g: 0.08, decay: 1.9 },
+    ];
+
+    freqs.forEach(({ f, g, decay }) => {
+      if (!this.ctx || !this.bellGain) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, now);
+
+      const targetVol = g * this.masterVolume;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(targetVol, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+      osc.connect(gain);
+      gain.connect(this.bellGain);
+
+      osc.start(now);
+      osc.stop(now + decay + 0.1);
+    });
+  }
+
+  // 4. Koshi Wind Chime (High crystalline silver chime shimmer)
+  public playKoshiChime() {
+    this.initContext();
+    if (!this.ctx || !this.bellGain || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    const chimeFreqs = [432, 648, 864, 1296];
+    chimeFreqs.forEach((freq, idx) => {
+      if (!this.ctx || !this.bellGain) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.018);
+
+      const decay = 2.8 - idx * 0.4;
+      const targetVol = (0.24 / (idx + 1)) * this.masterVolume;
+
+      gain.gain.setValueAtTime(0, now + idx * 0.018);
+      gain.gain.linearRampToValueAtTime(targetVol, now + idx * 0.018 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.018 + decay);
+
+      osc.connect(gain);
+      gain.connect(this.bellGain);
+
+      osc.start(now + idx * 0.018);
+      osc.stop(now + idx * 0.018 + decay + 0.1);
+    });
+  }
+
+  // 5. Zen Temple Wood Block (Organic hollow acoustic temple clapper)
+  public playWoodBlock() {
+    this.initContext();
+    if (!this.ctx || !this.bellGain || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(820, now);
+    osc.frequency.exponentialRampToValueAtTime(540, now + 0.035);
+
+    const targetVol = 0.38 * this.masterVolume;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(targetVol, now + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+
+    osc.connect(gain);
+    gain.connect(this.bellGain);
+
+    osc.start(now);
+    osc.stop(now + 0.12);
+  }
+
+  // Smart dispatcher for phase transitions
+  public playTransitionCue(bellIdentifier: string = 'zen-temple', pitchHz: number = 432) {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate([40, 60, 40]);
+      } catch {
+        // Ignore
+      }
+    }
+
+    const key = (bellIdentifier || '').toLowerCase();
+    if (key.includes('water') || key.includes('drop')) {
+      this.playWaterDrop();
+    } else if (key.includes('temple')) {
+      this.playTempleBell();
+    } else if (key.includes('tibetan') || key.includes('bowl')) {
+      this.playTibetanBowl();
+    } else if (key.includes('wood') || key.includes('clapper')) {
+      this.playWoodBlock();
+    } else if (key.includes('koshi') || key.includes('chime')) {
+      this.playKoshiChime();
+    } else {
+      this.playTransitionChime(pitchHz);
+    }
+  }
+
+  // Resonant Phase Transition Bell chime (fallback)
   public playTransitionChime(pitchHz: number = 432) {
     this.initContext();
     if (!this.ctx || !this.bellGain || this.isMuted) return;
