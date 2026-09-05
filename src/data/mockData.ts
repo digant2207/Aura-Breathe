@@ -183,14 +183,6 @@ export const TRANSITION_BELLS: TransitionBell[] = [
     bellType: 'temple-bell',
   },
   {
-    id: 'water-drop',
-    name: 'Water Drop',
-    freq: 'Spatial Drop',
-    description: 'Crisp fluid droplet glide & bubbly bounce',
-    pitchHz: 1200,
-    bellType: 'water-drop',
-  },
-  {
     id: 'tibetan-bowl',
     name: 'Tibetan Singing Bowl',
     freq: '216 Hz',

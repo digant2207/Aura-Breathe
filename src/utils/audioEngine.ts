@@ -343,48 +343,6 @@ class AudioEngine {
     });
   }
 
-  // 2. Pure Water Drop (Rapid downward pitch glide with fluid bubble pop)
-  public playWaterDrop() {
-    this.initContext();
-    if (!this.ctx || !this.bellGain || this.isMuted) return;
-
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1600, now);
-    osc.frequency.exponentialRampToValueAtTime(580, now + 0.05);
-    osc.frequency.exponentialRampToValueAtTime(720, now + 0.12);
-
-    const volume = 0.42 * this.masterVolume;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(volume, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-
-    osc.connect(gain);
-    gain.connect(this.bellGain);
-
-    osc.start(now);
-    osc.stop(now + 0.4);
-
-    // Subtle droplet ping harmonic
-    const ping = this.ctx.createOscillator();
-    const pingGain = this.ctx.createGain();
-    ping.type = 'sine';
-    ping.frequency.setValueAtTime(1200, now);
-    ping.frequency.exponentialRampToValueAtTime(900, now + 0.08);
-
-    pingGain.gain.setValueAtTime(volume * 0.3, now);
-    pingGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-
-    ping.connect(pingGain);
-    pingGain.connect(this.bellGain);
-
-    ping.start(now);
-    ping.stop(now + 0.2);
-  }
 
   // 3. Tibetan Singing Bowl (Detuned dual sine waves for warm physical beating)
   public playTibetanBowl() {
@@ -487,9 +445,7 @@ class AudioEngine {
     }
 
     const key = (bellIdentifier || '').toLowerCase();
-    if (key.includes('water') || key.includes('drop')) {
-      this.playWaterDrop();
-    } else if (key.includes('temple')) {
+    if (key.includes('temple')) {
       this.playTempleBell();
     } else if (key.includes('tibetan') || key.includes('bowl')) {
       this.playTibetanBowl();
