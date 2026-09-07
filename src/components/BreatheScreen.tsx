@@ -109,6 +109,9 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
           if (transitionBellEnabledRef.current) {
             audioEngine.playTransitionCue(selectedBellRef.current.bellType || selectedBellRef.current.id, 432);
           }
+          // Sync Energy track or breath-aligned mallet strike with initial inhale
+          audioEngine.syncEnergyPhase('inhale', getPhaseDuration('inhale', patternRef.current));
+          audioEngine.syncBreathTransition('inhale');
           phaseStartTimeRef.current = performance.now();
           return 0;
         }
@@ -122,6 +125,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
   // Play ambient audio immediately so user feels calm even during get-ready
   useEffect(() => {
     audioEngine.playTrack(currentTrack.audioType || currentTrack.title);
+    audioEngine.syncEnergyPhase(phaseRef.current, getPhaseDuration(phaseRef.current, patternRef.current));
     setSoundPlaying(true);
 
     return () => {
@@ -129,15 +133,25 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
     };
   }, [currentTrack]);
 
-  // Handle pause and resume without animation skips
+  // Handle pause and resume: stops sound on pause, smoothly resumes on resume
   useEffect(() => {
     isPausedRef.current = isPaused;
     if (isPaused) {
       pausedAtRef.current = performance.now();
+      audioEngine.pauseAmbient();
     } else if (pausedAtRef.current !== null) {
       const pauseDuration = performance.now() - pausedAtRef.current;
       phaseStartTimeRef.current += pauseDuration;
       pausedAtRef.current = null;
+      audioEngine.resumeAmbient();
+
+      // Recalculate remaining seconds of current phase and re-sync Energy track pitch
+      const curPhase = phaseRef.current;
+      const curPattern = patternRef.current;
+      const durationSec = getPhaseDuration(curPhase, curPattern);
+      const elapsedMs = performance.now() - phaseStartTimeRef.current;
+      const remainingSec = Math.max(0.5, (durationSec * 1000 - elapsedMs) / 1000);
+      audioEngine.syncEnergyPhase(curPhase, remainingSec);
     }
   }, [isPaused]);
 
@@ -281,7 +295,8 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
             if (remaining <= 20 || isFinishingOnExhaleRef.current) {
               setIsCompleted(true);
               isCompletedRef.current = true;
-              audioEngine.playTransitionCue(selectedBellRef.current.bellType || selectedBellRef.current.id, 528);
+              // Stop ambient sound and play unique calm session end wash!
+              audioEngine.playSessionEndSound();
               return;
             }
           }
@@ -304,7 +319,15 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
             setCurrentRound((r) => Math.min(calculatedTotalRounds, r + 1));
           }
 
-          // Play transition bell sound
+          const nextDurationSec = getPhaseDuration(nextPhase, curPattern);
+
+          // 1. Sync procedural 'Energy' track frequency/filter/gain with closed-eyes breath guidance
+          audioEngine.syncEnergyPhase(nextPhase, nextDurationSec);
+
+          // 2. Sync Buddhist Singing Bowl wooden mallet strike with breathing style
+          audioEngine.syncBreathTransition(nextPhase);
+
+          // 3. Play resonant transition bell sound (with automatic ambient ducking for pristine clarity)
           if (transitionBellEnabledRef.current) {
             audioEngine.playTransitionCue(
               selectedBellRef.current.bellType || selectedBellRef.current.id,
@@ -331,6 +354,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
       setSoundPlaying(false);
     } else {
       audioEngine.playTrack(currentTrack.audioType);
+      audioEngine.syncEnergyPhase(phaseRef.current, getPhaseDuration(phaseRef.current, patternRef.current));
       setSoundPlaying(true);
     }
   };
@@ -340,6 +364,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
       onChangeTrack(track);
     }
     audioEngine.playTrack(track.audioType);
+    audioEngine.syncEnergyPhase(phaseRef.current, getPhaseDuration(phaseRef.current, patternRef.current));
     setSoundPlaying(true);
     setShowSoundModal(false);
   };
@@ -478,6 +503,8 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
                 if (transitionBellEnabledRef.current) {
                   audioEngine.playTransitionCue(selectedBellRef.current.bellType || selectedBellRef.current.id, 432);
                 }
+                audioEngine.syncEnergyPhase('inhale', getPhaseDuration('inhale', patternRef.current));
+                audioEngine.syncBreathTransition('inhale');
               }}
               className="text-[10px] text-primary/80 hover:text-primary font-medium tracking-wider uppercase pt-1 cursor-pointer focus:outline-none"
             >
@@ -602,7 +629,10 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
       <div className="grid grid-cols-2 gap-3 w-full mt-5">
         <button
           type="button"
-          onClick={() => onEndSession(completedSecondsRef.current)}
+          onClick={() => {
+            audioEngine.stopAmbient();
+            onEndSession(completedSecondsRef.current);
+          }}
           className="py-3 px-4 rounded-xl bg-surface-container-high/70 backdrop-blur-xl border border-outline-variant/40 text-on-surface text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-surface-container-highest/80 active:scale-95 transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined text-sm text-on-surface-variant">close</span>
@@ -723,7 +753,10 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => onEndSession(completedSecondsRef.current)}
+              onClick={() => {
+                audioEngine.stopAmbient();
+                onEndSession(completedSecondsRef.current);
+              }}
               className="w-full py-2.5 rounded-xl bg-primary text-on-primary font-semibold text-xs shadow-md active:scale-95 transition-all cursor-pointer"
             >
               Done &amp; View Progress

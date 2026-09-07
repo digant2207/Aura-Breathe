@@ -18,6 +18,7 @@ import { DailyZenScreen } from './components/DailyZenScreen';
 import { BreatheScreen } from './components/BreatheScreen';
 import { SoundscapesScreen } from './components/SoundscapesScreen';
 import { ProgressScreen } from './components/ProgressScreen';
+import { audioEngine } from './utils/audioEngine';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('daily-zen');
@@ -108,6 +109,7 @@ export default function App() {
   };
 
   const handleEndSession = (completedSeconds: number) => {
+    audioEngine.stopAmbient();
     setIsBreathingSessionRunning(false);
     const addedMinutes = Math.max(1, Math.round(completedSeconds / 60));
     const cycleTime = Math.max(1, activePattern.inhale + activePattern.hold1 + activePattern.exhale + activePattern.hold2);
@@ -154,6 +156,14 @@ export default function App() {
     } catch (_) {}
   };
 
+  const handleNavigate = (tab: TabType) => {
+    if (activeTab === 'breathe' && tab !== 'breathe') {
+      audioEngine.stopAmbient();
+      setIsBreathingSessionRunning(false);
+    }
+    setActiveTab(tab);
+  };
+
   return (
     <div className="min-h-screen w-full bg-[#0a0e1a] text-on-surface flex flex-col relative overflow-x-hidden selection:bg-primary/30">
       {/* Subtle Background Radial Ambient Glows for Glacier Atmosphere */}
@@ -164,7 +174,7 @@ export default function App() {
       {/* Persistent App Header */}
       <Header
         activeTab={activeTab}
-        onNavigate={(tab) => setActiveTab(tab)}
+        onNavigate={handleNavigate}
       />
 
       {/* Main Content Area with iPhone 12+ Notch and Home Indicator Safe Area Insets */}
@@ -178,7 +188,7 @@ export default function App() {
         {activeTab === 'daily-zen' && (
           <DailyZenScreen
             onStartSession={handleStartSession}
-            onNavigate={(tab) => setActiveTab(tab)}
+            onNavigate={handleNavigate}
             selectedDuration={selectedDuration}
             setSelectedDuration={setSelectedDuration}
             activePattern={activePattern}
@@ -222,7 +232,7 @@ export default function App() {
       {/* Persistent Bottom Navigation Bar */}
       <BottomNav
         activeTab={activeTab}
-        onNavigate={(tab) => setActiveTab(tab)}
+        onNavigate={handleNavigate}
         isBreathingActive={isBreathingSessionRunning}
       />
     </div>

@@ -393,7 +393,9 @@ export const SoundscapesScreen: React.FC<SoundscapesScreenProps> = ({
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">
-                      {bell.bellType === 'temple-bell'
+                      {bell.bellType === 'auto-528-bowl'
+                        ? 'self_improvement'
+                        : bell.bellType === 'temple-bell'
                         ? 'notifications_active'
                         : bell.bellType === 'tibetan-bowl'
                         ? 'radio_button_checked'

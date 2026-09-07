@@ -24,7 +24,7 @@ export interface SoundscapeTrack {
   isFavorite: boolean;
   imageUrl: string;
   frequency?: string;
-  audioType: 'rain' | 'theta' | 'singing-bowl' | 'aurora' | 'fire' | 'stream';
+  audioType: 'rain' | 'theta' | 'singing-bowl' | 'aurora' | 'fire' | 'stream' | 'energy' | 'auto-bowl' | 'universe-888';
 }
 
 export interface TransitionBell {
@@ -33,7 +33,7 @@ export interface TransitionBell {
   freq: string;
   description: string;
   pitchHz: number;
-  bellType: 'temple-bell' | 'tibetan-bowl' | 'koshi-chime' | 'wood-block';
+  bellType: 'temple-bell' | 'tibetan-bowl' | 'koshi-chime' | 'wood-block' | 'auto-528-bowl';
 }
 
 export interface Badge {
