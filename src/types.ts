@@ -23,8 +23,7 @@ export interface SoundscapeTrack {
   duration: string;
   isFavorite: boolean;
   imageUrl: string;
-  frequency?: string;
-  audioType: 'rain' | 'theta' | 'singing-bowl' | 'aurora' | 'fire' | 'stream' | 'energy' | 'auto-bowl' | 'universe-888';
+  audioType: 'rain' | 'theta' | 'singing-bowl' | 'aurora' | 'fire' | 'stream' | 'energy' | 'auto-bowl' | 'universe-888' | 'silent';
 }
 
 export interface TransitionBell {

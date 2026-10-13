@@ -49,9 +49,11 @@ export const DailyZenScreen: React.FC<DailyZenScreenProps> = ({
   };
 
   const handleStepPhase = (phaseKey: 'inhale' | 'hold1' | 'exhale' | 'hold2', delta: number) => {
+    // Hold phases support up to 45 seconds for deep breath retentions (Pranayama / Kumbhaka)
+    const maxSeconds = phaseKey === 'hold1' || phaseKey === 'hold2' ? 45 : 30;
     const updated = {
       ...activePattern,
-      [phaseKey]: Math.max(0, Math.min(30, (activePattern[phaseKey] || 0) + delta)),
+      [phaseKey]: Math.max(0, Math.min(maxSeconds, (activePattern[phaseKey] || 0) + delta)),
       name: 'Custom Flow',
     };
     setActivePattern(updated);

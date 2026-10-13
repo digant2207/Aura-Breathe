@@ -67,7 +67,7 @@ class AudioEngine {
    * ensuring transition cues ring out crystal-clear even with closed eyes.
    */
   public duckAmbient(durationSec: number = 1.8, duckDepth: number = 0.35) {
-    if (!this.ctx || !this.ambientGain || this.isMuted) return;
+    if (!this.ctx || !this.ambientGain || this.isMuted || this.currentTrackType === 'silent') return;
     const now = this.ctx.currentTime;
     const normalGain = this.masterVolume * 0.38;
     const duckedGain = normalGain * duckDepth;
@@ -86,15 +86,12 @@ class AudioEngine {
     // Stop current ambient sound
     this.stopAmbient();
 
-    // Ensure ambient gain is at audible target volume
-    const targetGain = this.isMuted ? 0 : this.masterVolume * 0.38;
-    this.ambientGain.gain.cancelScheduledValues(this.ctx.currentTime);
-    this.ambientGain.gain.setValueAtTime(targetGain, this.ctx.currentTime);
-
     const normalized = (trackType || '').toLowerCase();
-    let resolvedType: 'rain' | 'theta' | 'singing-bowl' | 'aurora' | 'stream' | 'energy' | 'auto-bowl' | 'universe-888' = 'stream';
+    let resolvedType: 'rain' | 'theta' | 'singing-bowl' | 'aurora' | 'stream' | 'energy' | 'auto-bowl' | 'universe-888' | 'silent' = 'stream';
 
-    if (normalized.includes('energy')) {
+    if (normalized.includes('silent') || normalized.includes('no music') || normalized.includes('bell only') || normalized.includes('bell-only') || normalized.includes('none')) {
+      resolvedType = 'silent';
+    } else if (normalized.includes('energy')) {
       resolvedType = 'energy';
     } else if (normalized.includes('universe') || normalized.includes('888') || normalized.includes('fire') || normalized.includes('cedar')) {
       resolvedType = 'universe-888';
@@ -114,6 +111,18 @@ class AudioEngine {
 
     this.currentTrackType = resolvedType;
     this.isPlaying = true;
+
+    if (resolvedType === 'silent') {
+      // Zero out ambient channel completely while leaving transition bells fully audible
+      this.ambientGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.ambientGain.gain.setValueAtTime(0, this.ctx.currentTime);
+      return;
+    }
+
+    // Ensure ambient gain is at audible target volume for soundscapes
+    const targetGain = this.isMuted ? 0 : this.masterVolume * 0.38;
+    this.ambientGain.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.ambientGain.gain.setValueAtTime(targetGain, this.ctx.currentTime);
 
     try {
       if (resolvedType === 'energy') {

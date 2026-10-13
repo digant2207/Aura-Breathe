@@ -583,7 +583,7 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
             {currentTrack.title}
           </span>
           <span className="text-[10px] font-bold tracking-wider text-primary uppercase mt-1 flex items-center gap-0.5">
-            <span>{soundPlaying ? 'PLAYING' : 'MUTED'}</span>
+            <span>{currentTrack.audioType === 'silent' ? (soundPlaying ? 'BELL ONLY' : 'MUTED') : (soundPlaying ? 'PLAYING' : 'MUTED')}</span>
             <span className="material-symbols-outlined text-[12px]">expand_more</span>
           </span>
         </button>
@@ -673,21 +673,63 @@ export const BreatheScreen: React.FC<BreatheScreenProps> = ({
               </button>
             </div>
 
-            {/* Mute/Play Quick Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleSound}
-              className={`w-full py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold border transition-all ${
-                soundPlaying
-                  ? 'bg-primary/20 border-primary/40 text-primary'
-                  : 'bg-surface-container-highest border-outline-variant text-on-surface-variant'
-              }`}
-            >
-              <span className="material-symbols-outlined text-base">
-                {soundPlaying ? 'volume_up' : 'volume_off'}
-              </span>
-              <span>{soundPlaying ? 'Audio Playing (Tap to Mute)' : 'Audio Muted (Tap to Play)'}</span>
-            </button>
+            {/* Ambient Sound Enable/Disable Toggle (Transition-bell style) */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-high/60 border border-outline-variant/30">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                    soundPlaying
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-surface-container-highest text-on-surface-variant'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">
+                    {currentTrack.audioType === 'silent'
+                      ? 'notifications_active'
+                      : soundPlaying
+                      ? 'volume_up'
+                      : 'volume_off'}
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h5 className="text-xs font-semibold text-on-surface">Ambient Sound</h5>
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full transition-colors ${
+                        soundPlaying
+                          ? 'bg-primary/20 text-primary'
+                          : 'bg-surface-container-highest text-on-surface-variant'
+                      }`}
+                    >
+                      {soundPlaying ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-on-surface-variant">
+                    {currentTrack.audioType === 'silent'
+                      ? 'Chimes active, music silent'
+                      : soundPlaying
+                      ? 'Soundscape active'
+                      : 'Soundscape muted'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={toggleSound}
+                aria-label="Toggle Sound"
+                title={soundPlaying ? 'Disable Sound' : 'Enable Sound'}
+                className={`w-9 h-5 rounded-full relative p-0.5 transition-colors focus:outline-none cursor-pointer ${
+                  soundPlaying ? 'bg-primary' : 'bg-surface-container-highest'
+                }`}
+              >
+                <span
+                  className={`block w-4 h-4 rounded-full bg-surface-dim transition-transform shadow ${
+                    soundPlaying ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
 
             {/* All 6 Soundscapes */}
             <div className="space-y-2">

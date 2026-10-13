@@ -15,6 +15,7 @@ export const ASSETS = {
   universe888: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=400&q=80',
   energyFlow: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=400&q=80',
   autoBowl: 'https://images.unsplash.com/photo-1514533450685-4493e01d1fdc?auto=format&fit=crop&w=400&q=80',
+  silentBell: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=400&q=80',
 };
 
 export const DEFAULT_PATTERNS: BreathPattern[] = [
@@ -199,6 +200,18 @@ export const SOUNDSCAPE_TRACKS: SoundscapeTrack[] = [
     isFavorite: true,
     imageUrl: ASSETS.autoBowl,
     audioType: 'auto-bowl',
+  },
+  {
+    id: 'silent-bell-only',
+    title: 'No Music (Transition Bell Only)',
+    subtitle: 'Pure silence with mindful phase transition chimes',
+    category: 'zen',
+    tag: 'Bells Only',
+    tagColor: 'primary',
+    duration: 'Unlimited',
+    isFavorite: true,
+    imageUrl: ASSETS.silentBell,
+    audioType: 'silent',
   },
 ];
 

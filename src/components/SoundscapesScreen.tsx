@@ -125,28 +125,57 @@ export const SoundscapesScreen: React.FC<SoundscapesScreenProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold tracking-widest text-primary uppercase flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-primary animate-pulse' : 'bg-outline-variant'}`} />
               NOW PLAYING
             </span>
             <span className="px-2 py-0.5 rounded-full bg-tertiary/15 text-tertiary border border-tertiary/20 text-[10px] font-semibold">
               {currentTrack.tag}
             </span>
+            <span
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full transition-colors ${
+                isPlaying
+                  ? 'bg-primary/20 text-primary'
+                  : 'bg-surface-container-highest text-on-surface-variant'
+              }`}
+            >
+              {isPlaying ? 'Enabled' : 'Disabled'}
+            </span>
           </div>
 
-          <button
-            type="button"
-            onClick={(e) => handleToggleFavorite(e, currentTrack.id)}
-            className="text-on-surface-variant hover:text-red-400 transition-colors focus:outline-none"
-          >
-            <span
-              className={`material-symbols-outlined text-lg ${
-                currentTrack.isFavorite ? 'text-red-400' : ''
+          <div className="flex items-center gap-2.5">
+            {/* Transition Bell-styled Toggle Switch to Enable or Disable Sound */}
+            <button
+              type="button"
+              onClick={() => handleTogglePlay()}
+              aria-label="Toggle Sound"
+              title={isPlaying ? 'Disable Sound' : 'Enable Sound'}
+              className={`w-9 h-5 rounded-full relative p-0.5 transition-colors focus:outline-none cursor-pointer ${
+                isPlaying ? 'bg-primary' : 'bg-surface-container-highest'
               }`}
-              style={{ fontVariationSettings: currentTrack.isFavorite ? "'FILL' 1" : "'FILL' 0" }}
             >
-              favorite
-            </span>
-          </button>
+              <span
+                className={`block w-4 h-4 rounded-full bg-surface-dim transition-transform shadow ${
+                  isPlaying ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => handleToggleFavorite(e, currentTrack.id)}
+              className="text-on-surface-variant hover:text-red-400 transition-colors focus:outline-none cursor-pointer"
+              title="Favorite Track"
+            >
+              <span
+                className={`material-symbols-outlined text-lg ${
+                  currentTrack.isFavorite ? 'text-red-400' : ''
+                }`}
+                style={{ fontVariationSettings: currentTrack.isFavorite ? "'FILL' 1" : "'FILL' 0" }}
+              >
+                favorite
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Middle Track Info + Art + Big Play/Pause Button */}
@@ -167,10 +196,12 @@ export const SoundscapesScreen: React.FC<SoundscapesScreenProps> = ({
               {currentTrack.subtitle}
             </p>
             <div className="flex items-center gap-1.5 text-[10px] text-secondary-fixed-dim mt-1">
-              <span className="material-symbols-outlined text-[12px]">group</span>
-              <span>Immersive 3D Field</span>
+              <span className="material-symbols-outlined text-[12px]">
+                {currentTrack.audioType === 'silent' ? 'notifications_active' : 'group'}
+              </span>
+              <span>{currentTrack.audioType === 'silent' ? 'Pure Silence' : 'Immersive 3D Field'}</span>
               <span>•</span>
-              <span>Looping</span>
+              <span>{currentTrack.audioType === 'silent' ? 'Transition Bells Only' : 'Looping'}</span>
             </div>
           </div>
 
@@ -196,10 +227,19 @@ export const SoundscapesScreen: React.FC<SoundscapesScreenProps> = ({
             <div
               key={i}
               className={`w-1 rounded-full bg-primary/70 transition-all duration-300 ${
-                isPlaying ? 'animate-pulse' : 'opacity-40'
+                isPlaying
+                  ? currentTrack.audioType === 'silent'
+                    ? 'opacity-30'
+                    : 'animate-pulse'
+                  : 'opacity-40'
               }`}
               style={{
-                height: isPlaying ? `${Math.max(15, (h + (i % 3) * 15) % 100)}%` : '20%',
+                height:
+                  isPlaying
+                    ? currentTrack.audioType === 'silent'
+                      ? '12%'
+                      : `${Math.max(15, (h + (i % 3) * 15) % 100)}%`
+                    : '20%',
                 animationDelay: `${(i * 70) % 600}ms`,
               }}
             />
